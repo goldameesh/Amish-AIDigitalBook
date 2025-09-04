@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Digital Book</title>
+
+    <!-- Fonts + Tailwind -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      :root {
+        --gold: #cfb53b; /* Old Gold */
+        --flip-ms: 950ms;
+        --flip-ease: cubic-bezier(0.17, 0.67, 0.22, 1);
+      }
+      body {
+        background: #000;
+        color: #fff;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      }
+
+      /* Gold utilities */
+      .text-gold {
+        color: var(--gold);
+      }
+      .bg-gold {
+        background-color: var(--gold);
+      }
+      .border-gold {
+        border-color: var(--gold);
+      }
+      .glow-gold {
+        box-shadow: 0 0 15px rgba(207, 181, 59, 0.55),
+          0 0 30px rgba(207, 181, 59, 0.3);
+      }
+
+      /* Book frame + border rim */
+      .book-frame {
+        position: relative;
+        border-radius: 24px;
+        background: rgba(0, 0, 0, 0.92);
+      }
+      .book-frame::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        padding: 2px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #cfb53b, #fff7cf, #cfb53b);
+        -webkit-mask: linear-gradient(#000 0 0) content-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+      }
+
+      /* Page flip */
+      .page-sheet {
+        position: relative;
+        transform-style: preserve-3d;
+        will-change: transform, opacity;
+      }
+      .page-sheet.turning::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 22px;
+        pointer-events: none;
+        background: linear-gradient(
+          90deg,
+          rgba(0, 0, 0, 0),
+          rgba(0, 0, 0, 0.18),
+          rgba(0, 0, 0, 0)
+        );
+        animation: pageCurl var(--flip-ms) var(--flip-ease);
+      }
+      @keyframes pageCurl {
+        0% {
+          opacity: 0;
+        }
+        30% {
+          opacity: 0.4;
+        }
+        70% {
+          opacity: 0.35;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes flipRight {
+        0% {
+          transform: perspective(1600px) rotateY(-75deg) translateX(24px);
+          filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+          opacity: 0.02;
+        }
+        55% {
+          transform: perspective(1600px) rotateY(-15deg) translateX(4px);
+          filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.55));
+          opacity: 1;
+        }
+        100% {
+          transform: perspective(1600px) rotateY(0);
+          filter: none;
+          opacity: 1;
+        }
+      }
+      @keyframes flipLeft {
+        0% {
+          transform: perspective(1600px) rotateY(75deg) translateX(-24px);
+          filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+          opacity: 0.02;
+        }
+        55% {
+          transform: perspective(1600px) rotateY(15deg) translateX(-4px);
+          filter: drop-shadow(0 16px 40px rgba(0, 0, 0, 0.55));
+          opacity: 1;
+        }
+        100% {
+          transform: perspective(1600px) rotateY(0);
+          filter: none;
+          opacity: 1;
+        }
+      }
+      .flip-right {
+        animation: flipRight var(--flip-ms) var(--flip-ease);
+        transform-origin: left center;
+      }
+      .flip-left {
+        animation: flipLeft var(--flip-ms) var(--flip-ease);
+        transform-origin: right center;
+      }
+
+      /* Fluid type + better readability */
+      html,
+      body {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      .fluid-title {
+        font-size: clamp(1.05rem, 2.8vw, 1.25rem);
+      } /* header chapter */
+      .fluid-counter {
+        font-size: clamp(0.75rem, 2.2vw, 0.9rem);
+      }
+      .fluid-body {
+        font-size: clamp(0.98rem, 3.3vw, 1.125rem);
+        line-height: 1.65;
+      }
+      .fluid-cover {
+        font-size: clamp(2rem, 6.2vw, 3.6rem);
+      }
+      .fluid-sub {
+        font-size: clamp(1rem, 3.6vw, 1.6rem);
+      }
+      .serif {
+        font-family: "Playfair Display", Georgia, "Times New Roman", Times,
+          serif;
+      }
+      .hyphens {
+        hyphens: auto;
+      }
+
+      /* HUD (Reading progress) */
+      :root {
+        --hud-bg: rgba(16, 16, 20, 0.75);
+        --hud-blur: 10px;
+        --hud-border: rgba(255, 255, 255, 0.12);
+        --hud-text: #eaeaea;
+        --hud-sub: #bdbdbd;
+        --hud-accent: var(--gold);
+      }
+      .reading-hud {
+        position: sticky;
+        top: 0;
+        inset-inline: 0;
+        z-index: 9999;
+        backdrop-filter: blur(var(--hud-blur));
+        -webkit-backdrop-filter: blur(var(--hud-blur));
+        background: var(--hud-bg);
+        border-bottom: 1px solid var(--hud-border);
+        padding: 0.6rem 0.9rem;
+        display: grid;
+        gap: 0.45rem;
+      }
+      .reading-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      .reading-bar {
+        position: relative;
+        block-size: 10px;
+        inline-size: 100%;
+        border-radius: 999px;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.06),
+          rgba(255, 255, 255, 0.03)
+        );
+        overflow: hidden;
+        border: 1px solid var(--hud-border);
+      }
+      .reading-fill {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        inline-size: 100%;
+        transform-origin: left center;
+        transform: scaleX(0);
+        background: linear-gradient(90deg, var(--hud-accent), #fff0a9);
+      }
+      [dir="rtl"] .reading-fill {
+        transform-origin: right center;
+      }
+      .reading-meta {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        color: var(--hud-sub);
+        font: 500 12px/1.2 Inter, system-ui, -apple-system, Segoe UI;
+      }
+      .reading-meta strong {
+        color: var(--hud-text);
+        font-weight: 700;
+      }
+      .reading-meta .dot {
+        inline-size: 4px;
+        block-size: 4px;
+        border-radius: 999px;
+        background: var(--hud-sub);
+        opacity: 0.6;
+        display: inline-block;
+        margin: 0 0.35rem;
+      }
+      .reading-wpm {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .reading-wpm input {
+        inline-size: 5rem;
+        padding: 0.25rem 0.45rem;
+        border: 1px solid var(--hud-border);
+        border-radius: 0.4rem;
+        background: transparent;
+        color: var(--hud-text);
+        font: 600 12px/1.1 Inter;
+      }
+      @media (max-width: 640px) {
+        .reading-meta {
+          gap: 0.6rem;
+        }
+        .reading-wpm input {
+          inline-size: 4.2rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Reading HUD (BAS) -->
+    <header
+      class="reading-hud"
+      id="readingHud"
+      role="complementary"
+      aria-label="Reading progress"
+    >
+      <div class="reading-row">
+        <div class="reading-bar" aria-hidden="true">
+          <span class="reading-fill"></span>
+        </div>
+      </div>
+      <div class="reading-row reading-meta">
+        <div>
+          <strong id="readingPercent">0%</strong> read
+          <span class="dot"></span> <span id="readingTime">—</span> remaining
+        </div>
+        <div class="reading-wpm" title="Personalize your reading speed">
+          <label for="wpmInput">WPM</label>
+          <input
+            id="wpmInput"
+            type="number"
+            min="80"
+            max="1200"
+            step="10"
+            value="220"
+          />
+        </div>
+      </div>
+    </header>
+
+    <!-- React root -->
+    <div id="root"></div>
+
+    <!-- HUD Script -->
+    <script>
+      (function () {
+        const PAGE_SELECTOR = ".page";
+        const hud = document.getElementById("readingHud");
+        const fill = hud.querySelector(".reading-fill");
+        const percentEl = document.getElementById("readingPercent");
+        const timeEl = document.getElementById("readingTime");
+        const wpmInput = document.getElementById("wpmInput");
+
+        const bookRoot =
+          document.querySelector("[data-book]") ||
+          document.getElementById("book") ||
+          document.body;
+
+        function countWords(root) {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+              const p = node.parentElement;
+              if (!p) return NodeFilter.FILTER_REJECT;
+              const tag = p.tagName;
+              if (
+                [
+                  "SCRIPT",
+                  "STYLE",
+                  "NOSCRIPT",
+                  "SVG",
+                  "CANVAS",
+                  "HEADER",
+                  "FOOTER",
+                  "NAV",
+                ].includes(tag)
+              )
+                return NodeFilter.FILTER_REJECT;
+              const t = node.nodeValue.replace(/\\s+/g, " ").trim();
+              return t ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            },
+          });
+          let n = 0;
+          while (walker.nextNode()) {
+            n += walker.currentNode.nodeValue.trim().split(/\\s+/).length;
+          }
+          return n;
+        }
+
+        function getPages() {
+          return Array.from(document.querySelectorAll(PAGE_SELECTOR));
+        }
+
+        function computeTotalWords() {
+          const pages = getPages();
+          if (pages.length) {
+            let total = 0;
+            for (const p of pages) {
+              if (!p.dataset.words) {
+                p.dataset.words = String(countWords(p));
+              }
+              total += +p.dataset.words;
+            }
+            return total;
+          }
+          return countWords(bookRoot);
+        }
+
+        let TOTAL_WORDS = computeTotalWords();
+
+        function getScrollProgress() {
+          const el = document.documentElement;
+          const sh = el.scrollHeight;
+          const ch = el.clientHeight;
+          const st = el.scrollTop || document.body.scrollTop;
+          return Math.min(1, Math.max(0, sh - ch ? st / (sh - ch) : 0));
+        }
+
+        function getFlipProgress() {
+          const pages = getPages();
+          if (!pages.length) return null;
+          let active = pages.findIndex(
+            (p) =>
+              p.classList.contains("is-active") || p.dataset.current === "true"
+          );
+          if (active < 0) {
+            let bestI = 0,
+              bestVis = -1,
+              vh = innerHeight;
+            pages.forEach((p, i) => {
+              const r = p.getBoundingClientRect();
+              const vis = Math.max(
+                0,
+                Math.min(vh, r.bottom) - Math.max(0, r.top)
+              );
+              if (vis > bestVis) {
+                bestVis = vis;
+                bestI = i;
+              }
+            });
+            active = bestI;
+          }
+          const wordsPerPage = pages.map((p) => +p.dataset.words || 0);
+          const wordsSoFar = wordsPerPage
+            .slice(0, active + 1)
+            .reduce((a, b) => a + b, 0);
+          const total =
+            wordsPerPage.reduce((a, b) => a + b, 0) || TOTAL_WORDS || 1;
+          return {
+            progress: Math.min(1, wordsSoFar / total),
+            wordsSoFar,
+            total,
+          };
+        }
+
+        function formatTime(mins) {
+          const total = Math.max(0, Math.ceil(mins * 60));
+          const m = Math.floor(total / 60);
+          const s = total % 60;
+          if (m >= 60) {
+            const h = Math.floor(m / 60);
+            const mm = m % 60;
+            return h + "h " + mm + "m";
+          }
+          return m + "m " + s + "s";
+        }
+
+        function getWPM() {
+          const v = parseInt(
+            localStorage.getItem("bas_reading_wpm") || wpmInput.value,
+            10
+          );
+          return v && v > 0 ? v : 220;
+        }
+        function setFill(x) {
+          const rtl = getComputedStyle(document.body).direction === "rtl";
+          fill.style.transformOrigin = rtl ? "right center" : "left center";
+          fill.style.transform = "scaleX(" + Math.max(0, Math.min(1, x)) + ")";
+        }
+
+        function update() {
+          TOTAL_WORDS = computeTotalWords();
+          const flip = getFlipProgress();
+          let progress, wordsSoFar, total;
+          if (flip) {
+            progress = flip.progress;
+            wordsSoFar = flip.wordsSoFar;
+            total = flip.total;
+          } else {
+            progress = getScrollProgress();
+            wordsSoFar = Math.round(TOTAL_WORDS * progress);
+            total = TOTAL_WORDS;
+          }
+          const wpm = getWPM();
+          wpmInput.value = String(wpm);
+          const remainingWords = Math.max(0, total - wordsSoFar);
+          const minutesRemaining = remainingWords / (wpm || 220);
+          setFill(progress);
+          percentEl.textContent = Math.round(progress * 100) + "%";
+          timeEl.textContent = "~" + formatTime(minutesRemaining);
+        }
+
+        window.ReadingHUD = {
+          update,
+          setWPM(v) {
+            const n = Math.max(80, Math.min(1200, parseInt(v, 10) || 220));
+            localStorage.setItem("bas_reading_wpm", String(n));
+            wpmInput.value = String(n);
+            update();
+          },
+          recalc() {
+            TOTAL_WORDS = computeTotalWords();
+            update();
+          },
+        };
+
+        wpmInput.addEventListener("change", () => {
+          window.ReadingHUD.setWPM(wpmInput.value);
+        });
+        ["scroll", "resize", "pageshow"].forEach((e) =>
+          addEventListener(e, update, { passive: true })
+        );
+        ["flip", "turned", "page", "pageChange", "change"].forEach((ev) =>
+          document.addEventListener(ev, update)
+        );
+        update();
+      })();
+    </script>
+  </body>
+</html>
